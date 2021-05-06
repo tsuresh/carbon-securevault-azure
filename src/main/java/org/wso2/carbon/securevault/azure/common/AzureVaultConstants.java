@@ -15,7 +15,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.wso2.carbon.securevault.hashicorp.common;
+package org.wso2.carbon.securevault.azure.common;
 
 import org.wso2.carbon.utils.CarbonUtils;
 
@@ -24,9 +24,9 @@ import java.io.File;
 /**
  * HashiCorp vault constants.
  */
-public class HashiCorpVaultConstants {
+public class AzureVaultConstants {
 
-    private HashiCorpVaultConstants() {}
+    private AzureVaultConstants() {}
 
     public static final String CONFIG_FILE_PATH = CarbonUtils.getCarbonConfigDirPath() + File.separator +
             "security" + File.separator + "secret-conf.properties";

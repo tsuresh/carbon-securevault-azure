@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>org.wso2.carbon</groupId>
-    <artifactId>org.wso2.carbon.securevault.hashicorp</artifactId>
+    <artifactId>org.wso2.carbon.securevault.azure</artifactId>
     <version>2.0</version>
     <packaging>bundle</packaging>
 
@@ -19,10 +19,10 @@
                     <instructions>
                         <Bundle-SymbolicName>${project.artifactId}</Bundle-SymbolicName>
                         <Export-Package>
-                            org.wso2.carbon.securevault.hashicorp.common;version="${project.version}",
-                            org.wso2.carbon.securevault.hashicorp.config;version="${project.version}",
-                            org.wso2.carbon.securevault.hashicorp.exception;version="${project.version}",
-                            org.wso2.carbon.securevault.hashicorp.repository;version="${project.version}"
+                            org.wso2.carbon.securevault.azure.common;version="${project.version}",
+                            org.wso2.carbon.securevault.azure.config;version="${project.version}",
+                            org.wso2.carbon.securevault.azure.exception;version="${project.version}",
+                            org.wso2.carbon.securevault.azure.repository;version="${project.version}"
                         </Export-Package>
                         <Import-Package>
                             com.bettercloud.vault.*,

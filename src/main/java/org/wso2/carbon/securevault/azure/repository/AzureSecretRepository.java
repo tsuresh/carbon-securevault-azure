@@ -15,7 +15,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.wso2.carbon.securevault.hashicorp.repository;
+package org.wso2.carbon.securevault.azure.repository;
 
 import com.bettercloud.vault.Vault;
 import com.bettercloud.vault.VaultConfig;
@@ -24,8 +24,8 @@ import com.bettercloud.vault.api.Logical;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.carbon.securevault.hashicorp.config.HashiCorpVaultConfigLoader;
-import org.wso2.carbon.securevault.hashicorp.exception.HashiCorpVaultException;
+import org.wso2.carbon.securevault.azure.config.AzureVaultConfigLoader;
+import org.wso2.carbon.securevault.azure.exception.AzureVaultException;
 import org.wso2.securevault.secret.SecretRepository;
 
 import java.io.BufferedReader;
@@ -39,20 +39,20 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.Properties;
 
-import static org.wso2.carbon.securevault.hashicorp.common.HashiCorpVaultConstants.ADDRESS_PARAMETER;
-import static org.wso2.carbon.securevault.hashicorp.common.HashiCorpVaultConstants.CARBON_HOME;
-import static org.wso2.carbon.securevault.hashicorp.common.HashiCorpVaultConstants.DEFAULT_ENGINE_VERSION;
-import static org.wso2.carbon.securevault.hashicorp.common.HashiCorpVaultConstants.ENGINE_PATH_PARAMETER;
-import static org.wso2.carbon.securevault.hashicorp.common.HashiCorpVaultConstants.ENGINE_VERSION_PARAMETER;
-import static org.wso2.carbon.securevault.hashicorp.common.HashiCorpVaultConstants.NAMESPACE_PARAMETER;
-import static org.wso2.carbon.securevault.hashicorp.common.HashiCorpVaultConstants.VALUE_PARAMETER;
+import static org.wso2.carbon.securevault.azure.common.AzureVaultConstants.ADDRESS_PARAMETER;
+import static org.wso2.carbon.securevault.azure.common.AzureVaultConstants.CARBON_HOME;
+import static org.wso2.carbon.securevault.azure.common.AzureVaultConstants.DEFAULT_ENGINE_VERSION;
+import static org.wso2.carbon.securevault.azure.common.AzureVaultConstants.ENGINE_PATH_PARAMETER;
+import static org.wso2.carbon.securevault.azure.common.AzureVaultConstants.ENGINE_VERSION_PARAMETER;
+import static org.wso2.carbon.securevault.azure.common.AzureVaultConstants.NAMESPACE_PARAMETER;
+import static org.wso2.carbon.securevault.azure.common.AzureVaultConstants.VALUE_PARAMETER;
 
 /**
  * HashiCorp Secret Repository.
  */
-public class HashiCorpSecretRepository implements SecretRepository {
+public class AzureSecretRepository implements SecretRepository {
 
-    private static final Log LOG = LogFactory.getLog(HashiCorpSecretRepository.class);
+    private static final Log LOG = LogFactory.getLog(AzureSecretRepository.class);
     private static final String SLASH = "/";
 
     private SecretRepository parentRepository;
@@ -67,7 +67,7 @@ public class HashiCorpSecretRepository implements SecretRepository {
     private boolean persistToken = false;
     private String rootToken;
     private static File tokenFile;
-    private String PROPERTY_PREFIX = "secretProviders.vault.repositories.hashicorp.properties.";
+    private String PROPERTY_PREFIX = "secretProviders.vault.repositories.azure.properties.";
 
 
     /**
@@ -82,17 +82,17 @@ public class HashiCorpSecretRepository implements SecretRepository {
         LOG.info("Initializing HashiCorp Secure Vault");
 
         // Load Configurations
-        HashiCorpVaultConfigLoader hashiCorpVaultConfigLoader = HashiCorpVaultConfigLoader.getInstance();
+        AzureVaultConfigLoader azureVaultConfigLoader = AzureVaultConfigLoader.getInstance();
         try {
-            address = hashiCorpVaultConfigLoader.getProperty(PROPERTY_PREFIX + ADDRESS_PARAMETER);
-            namespace = hashiCorpVaultConfigLoader.getProperty(PROPERTY_PREFIX + NAMESPACE_PARAMETER);
-            enginePath = hashiCorpVaultConfigLoader.getProperty(PROPERTY_PREFIX + ENGINE_PATH_PARAMETER);
+            address = azureVaultConfigLoader.getProperty(PROPERTY_PREFIX + ADDRESS_PARAMETER);
+            namespace = azureVaultConfigLoader.getProperty(PROPERTY_PREFIX + NAMESPACE_PARAMETER);
+            enginePath = azureVaultConfigLoader.getProperty(PROPERTY_PREFIX + ENGINE_PATH_PARAMETER);
 
-            String version = hashiCorpVaultConfigLoader.getProperty(PROPERTY_PREFIX + ENGINE_VERSION_PARAMETER);
+            String version = azureVaultConfigLoader.getProperty(PROPERTY_PREFIX + ENGINE_VERSION_PARAMETER);
             engineVersion = version != null ? Integer.parseInt(version) : DEFAULT_ENGINE_VERSION;
             // Get the vault token
             retrieveRootToken();
-        } catch (HashiCorpVaultException e) {
+        } catch (AzureVaultException e) {
             LOG.error(e.getMessage(), e);
         }
 
@@ -190,7 +190,7 @@ public class HashiCorpSecretRepository implements SecretRepository {
      * Get the root token of the vault. Either by prompting the user via the console or by accessing the text file
      * containing the root token.
      */
-    private void retrieveRootToken() throws HashiCorpVaultException {
+    private void retrieveRootToken() throws AzureVaultException {
 
         String carbonHome = System.getProperty(CARBON_HOME);
         setTextFileName();
@@ -205,7 +205,7 @@ public class HashiCorpSecretRepository implements SecretRepository {
 
             if (!persistToken) {
                 if (!renameConfigFile(textFileName_tmp)) {
-                    throw new HashiCorpVaultException("Error in renaming password config file.");
+                    throw new AzureVaultException("Error in renaming password config file.");
                 }
             }
         } else {
@@ -215,7 +215,7 @@ public class HashiCorpSecretRepository implements SecretRepository {
 
                 if (!persistToken) {
                     if (deleteConfigFile()) {
-                        throw new HashiCorpVaultException("Error in deleting password config file.");
+                        throw new AzureVaultException("Error in deleting password config file.");
                     }
                 }
             } else {
@@ -225,7 +225,7 @@ public class HashiCorpSecretRepository implements SecretRepository {
 
                     if (!persistToken) {
                         if (deleteConfigFile()) {
-                            throw new HashiCorpVaultException("Error in deleting password config file.");
+                            throw new AzureVaultException("Error in deleting password config file.");
                         }
                     }
                 } else {
@@ -264,16 +264,16 @@ public class HashiCorpSecretRepository implements SecretRepository {
      *
      * @param tokenFile File containing the root token.
      * @return The read token.
-     * @throws HashiCorpVaultException when an error occurred while reading the root token.
+     * @throws AzureVaultException when an error occurred while reading the root token.
      */
-    private String readToken(File tokenFile) throws HashiCorpVaultException {
+    private String readToken(File tokenFile) throws AzureVaultException {
 
         String tokenReadFromFile;
         try (FileInputStream inputStream = new FileInputStream(tokenFile);
              BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream))) {
             tokenReadFromFile = bufferedReader.readLine();
         } catch (IOException e) {
-            throw new HashiCorpVaultException("Error while reading the root token from " + tokenFile, e);
+            throw new AzureVaultException("Error while reading the root token from " + tokenFile, e);
         }
         return tokenReadFromFile;
     }
@@ -297,15 +297,15 @@ public class HashiCorpSecretRepository implements SecretRepository {
      * Util method to delete the temporary text file.
      *
      * @return true upon successful deletion.
-     * @throws HashiCorpVaultException when an error occurred while deleting the root token file.
+     * @throws AzureVaultException when an error occurred while deleting the root token file.
      */
-    private boolean deleteConfigFile() throws HashiCorpVaultException {
+    private boolean deleteConfigFile() throws AzureVaultException {
 
         try (FileOutputStream outputStream = new FileOutputStream(tokenFile);
              BufferedWriter bufferedWriter = new BufferedWriter(new OutputStreamWriter(outputStream))) {
             bufferedWriter.write("!@#$%^&*()SDFGHJZXCVBNM!@#$%^&*");
         } catch (IOException e) {
-            throw new HashiCorpVaultException("Error while deleting the " + tokenFile, e);
+            throw new AzureVaultException("Error while deleting the " + tokenFile, e);
         }
         return !tokenFile.exists() || !tokenFile.delete();
     }

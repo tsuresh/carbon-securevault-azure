@@ -29,7 +29,7 @@ WSO2 Identity Server 5.12.0 would have to use the [version-1](https://github.com
 ### Step 2: Configure HashiCorp Vault extension
 
 1. Build the HashiCorp Vault Integration OSGI bundle using `mvn clean install` and copy
-the `target/org.wso2.carbon.securevault.hashicorp-2.0.0.jar` file to `<IS_HOME>/repository/components/dropin/`
+the `target/org.wso2.carbon.securevault.azure-2.0.0.jar` file to `<IS_HOME>/repository/components/dropin/`
 directory.
 
 2. Add **HashiCorp Vault Java Driver** (Eg: `vault-java-driver-5.1.0.jar`) to the
@@ -43,7 +43,7 @@ directory.
     secretProviders.vault.provider=org.wso2.securevault.secret.repository.VaultSecretRepositoryProvider
     
     secretProviders.vault.repositories=hashicorp
-    secretProviders.vault.repositories.hashicorp=org.wso2.carbon.securevault.hashicorp.repository.HashiCorpSecretRepository 
+    secretProviders.vault.repositories.hashicorp=org.wso2.carbon.securevault.azure.repository.AzureSecretRepository 
     
     secretProviders.vault.repositories.hashicorp.properties.address=https://127.0.0.1:8200
     secretProviders.vault.repositories.hashicorp.properties.namespace=ns1
@@ -55,7 +55,7 @@ directory.
 
 4. Add following lines to the `<IS_HOME>/repository/conf/log4j2.properties` file
     ```
-    logger.org-wso2-carbon-securevault-hashicorp.name=org.wso2.carbon.securevault.hashicorp
+    logger.org-wso2-carbon-securevault-hashicorp.name=org.wso2.carbon.securevault.azure
     logger.org-wso2-carbon-securevault-hashicorp.level=INFO
     logger.org-wso2-carbon-securevault-hashicorp.additivity=false
     logger.org-wso2-carbon-securevault-hashicorp.appenderRef.CARBON_CONSOLE.ref = CARBON_CONSOLE

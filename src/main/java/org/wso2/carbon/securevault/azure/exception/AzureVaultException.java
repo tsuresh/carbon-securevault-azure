@@ -15,19 +15,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.wso2.carbon.securevault.hashicorp.exception;
+package org.wso2.carbon.securevault.azure.exception;
 
 /**
  * HashiCorp Vault Exception.
  */
-public class HashiCorpVaultException extends Exception {
+public class AzureVaultException extends Exception {
 
-    public HashiCorpVaultException(String message) {
+    public AzureVaultException(String message) {
 
         super(message);
     }
 
-    public HashiCorpVaultException(String message, Throwable cause) {
+    public AzureVaultException(String message, Throwable cause) {
 
         super(message, cause);
     }

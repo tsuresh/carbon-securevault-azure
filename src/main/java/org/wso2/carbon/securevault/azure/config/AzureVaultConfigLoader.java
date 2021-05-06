@@ -15,43 +15,43 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.wso2.carbon.securevault.hashicorp.config;
+package org.wso2.carbon.securevault.azure.config;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.wso2.carbon.securevault.hashicorp.exception.HashiCorpVaultException;
+import org.wso2.carbon.securevault.azure.exception.AzureVaultException;
 
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
 
-import static org.wso2.carbon.securevault.hashicorp.common.HashiCorpVaultConstants.CONFIG_FILE_PATH;
+import static org.wso2.carbon.securevault.azure.common.AzureVaultConstants.CONFIG_FILE_PATH;
 
 /**
  * Configuration Loader for Vault Configurations.
  */
-public class HashiCorpVaultConfigLoader {
+public class AzureVaultConfigLoader {
 
-    private static final Log LOG = LogFactory.getLog(HashiCorpVaultConfigLoader.class);
+    private static final Log LOG = LogFactory.getLog(AzureVaultConfigLoader.class);
 
-    private static HashiCorpVaultConfigLoader instance = null;
+    private static AzureVaultConfigLoader instance = null;
 
     private Properties properties;
 
-    private HashiCorpVaultConfigLoader() {
+    private AzureVaultConfigLoader() {
 
         try {
             loadConfigurations();
-        } catch (HashiCorpVaultException e) {
+        } catch (AzureVaultException e) {
             LOG.error(e.getMessage(), e);
         }
     }
 
-    public static HashiCorpVaultConfigLoader getInstance() {
+    public static AzureVaultConfigLoader getInstance() {
 
         if (instance == null) {
-            instance = new HashiCorpVaultConfigLoader();
+            instance = new AzureVaultConfigLoader();
         }
         return instance;
     }
@@ -59,13 +59,13 @@ public class HashiCorpVaultConfigLoader {
     /**
      * Load configurations.
      */
-    public void loadConfigurations() throws HashiCorpVaultException {
+    public void loadConfigurations() throws AzureVaultException {
 
         properties = new Properties();
         try (InputStream inputStream = new FileInputStream(CONFIG_FILE_PATH)) {
             properties.load(inputStream);
         } catch (IOException e) {
-            throw new HashiCorpVaultException("Error while loading configurations from " + CONFIG_FILE_PATH, e);
+            throw new AzureVaultException("Error while loading configurations from " + CONFIG_FILE_PATH, e);
         }
     }
 
@@ -74,9 +74,9 @@ public class HashiCorpVaultConfigLoader {
      *
      * @param key Key of the property
      * @return
-     * @throws HashiCorpVaultException
+     * @throws AzureVaultException
      */
-    public String getProperty(String key) throws HashiCorpVaultException {
+    public String getProperty(String key) throws AzureVaultException {
 
         return properties.getProperty(key);
     }
