@@ -18,7 +18,7 @@
 package org.wso2.carbon.securevault.azure.exception;
 
 /**
- * HashiCorp Vault Exception.
+ * Azure Vault Exception.
  */
 public class AzureVaultException extends Exception {
 

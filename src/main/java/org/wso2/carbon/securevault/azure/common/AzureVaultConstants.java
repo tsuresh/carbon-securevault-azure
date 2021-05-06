@@ -22,23 +22,16 @@ import org.wso2.carbon.utils.CarbonUtils;
 import java.io.File;
 
 /**
- * HashiCorp vault constants.
+ * Azure vault constants.
  */
 public class AzureVaultConstants {
 
-    private AzureVaultConstants() {}
+    private AzureVaultConstants() {
+    }
 
     public static final String CONFIG_FILE_PATH = CarbonUtils.getCarbonConfigDirPath() + File.separator +
             "security" + File.separator + "secret-conf.properties";
 
-    public static final String ADDRESS_PARAMETER = "address";
-    public static final String NAMESPACE_PARAMETER = "namespace";
-    public static final String ENGINE_PATH_PARAMETER = "enginePath";
-    public static final String ENGINE_VERSION_PARAMETER = "engineVersion";
+    public static final String KEY_VAULT_URL = "keyVaultUrl";
 
-    public static final int DEFAULT_ENGINE_VERSION = 2;
-
-    public static final String VALUE_PARAMETER = "value";
-
-    public static final String CARBON_HOME = "carbon.home";
 }

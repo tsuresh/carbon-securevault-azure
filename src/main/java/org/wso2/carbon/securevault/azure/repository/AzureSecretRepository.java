@@ -17,38 +17,23 @@
  */
 package org.wso2.carbon.securevault.azure.repository;
 
-import com.bettercloud.vault.Vault;
-import com.bettercloud.vault.VaultConfig;
-import com.bettercloud.vault.VaultException;
-import com.bettercloud.vault.api.Logical;
-import org.apache.commons.lang.StringUtils;
+import com.azure.core.exception.AzureException;
+import com.azure.identity.DefaultAzureCredentialBuilder;
+import com.azure.security.keyvault.secrets.SecretClient;
+import com.azure.security.keyvault.secrets.SecretClientBuilder;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.securevault.azure.config.AzureVaultConfigLoader;
 import org.wso2.carbon.securevault.azure.exception.AzureVaultException;
 import org.wso2.securevault.secret.SecretRepository;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.Console;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
 import java.util.Properties;
 
-import static org.wso2.carbon.securevault.azure.common.AzureVaultConstants.ADDRESS_PARAMETER;
-import static org.wso2.carbon.securevault.azure.common.AzureVaultConstants.CARBON_HOME;
-import static org.wso2.carbon.securevault.azure.common.AzureVaultConstants.DEFAULT_ENGINE_VERSION;
-import static org.wso2.carbon.securevault.azure.common.AzureVaultConstants.ENGINE_PATH_PARAMETER;
-import static org.wso2.carbon.securevault.azure.common.AzureVaultConstants.ENGINE_VERSION_PARAMETER;
-import static org.wso2.carbon.securevault.azure.common.AzureVaultConstants.NAMESPACE_PARAMETER;
-import static org.wso2.carbon.securevault.azure.common.AzureVaultConstants.VALUE_PARAMETER;
+import static org.wso2.carbon.securevault.azure.common.AzureVaultConstants.*;
 
 /**
- * HashiCorp Secret Repository.
+ * Azure Secret Repository.
  */
 public class AzureSecretRepository implements SecretRepository {
 
@@ -56,19 +41,10 @@ public class AzureSecretRepository implements SecretRepository {
     private static final String SLASH = "/";
 
     private SecretRepository parentRepository;
-    private String address;
-    private String namespace;
-    private String enginePath;
-    private int engineVersion;
 
-    private String textFileName;
-    private String textFileName_tmp;
-    private String textFilePersist;
-    private boolean persistToken = false;
-    private String rootToken;
-    private static File tokenFile;
+    private SecretClient secretClient;
+
     private String PROPERTY_PREFIX = "secretProviders.vault.repositories.azure.properties.";
-
 
     /**
      * Initializes the repository based on provided properties.
@@ -79,30 +55,29 @@ public class AzureSecretRepository implements SecretRepository {
     @Override
     public void init(Properties properties, String id) {
 
-        LOG.info("Initializing HashiCorp Secure Vault");
+        LOG.info("Initializing Azure Secure Vault");
 
         // Load Configurations
         AzureVaultConfigLoader azureVaultConfigLoader = AzureVaultConfigLoader.getInstance();
         try {
-            address = azureVaultConfigLoader.getProperty(PROPERTY_PREFIX + ADDRESS_PARAMETER);
-            namespace = azureVaultConfigLoader.getProperty(PROPERTY_PREFIX + NAMESPACE_PARAMETER);
-            enginePath = azureVaultConfigLoader.getProperty(PROPERTY_PREFIX + ENGINE_PATH_PARAMETER);
 
-            String version = azureVaultConfigLoader.getProperty(PROPERTY_PREFIX + ENGINE_VERSION_PARAMETER);
-            engineVersion = version != null ? Integer.parseInt(version) : DEFAULT_ENGINE_VERSION;
-            // Get the vault token
-            retrieveRootToken();
+            String keyVaultUrl = azureVaultConfigLoader.getProperty(PROPERTY_PREFIX + KEY_VAULT_URL);
+
+            try {
+                // Azure secret client
+                secretClient = new SecretClientBuilder()
+                        .vaultUrl(keyVaultUrl)
+                        .credential(new DefaultAzureCredentialBuilder().build())
+                        .buildClient();
+                LOG.info("Ready to read secret from vault");
+            } catch (AzureException exception) {
+                throw new AzureVaultException(exception.getLocalizedMessage());
+            }
+
         } catch (AzureVaultException e) {
             LOG.error(e.getMessage(), e);
         }
 
-        if (rootToken == null || rootToken.isEmpty()) {
-            LOG.warn("VAULT_TOKEN has not been provided.");
-        }
-
-        if (engineVersion != 2) {
-            LOG.error("Supported engine version: 2");
-        }
     }
 
     /**
@@ -115,38 +90,12 @@ public class AzureSecretRepository implements SecretRepository {
     @Override
     public String getSecret(String alias) {
 
-        if (StringUtils.isEmpty(alias)) {
-            return alias;
-        }
-
-        StringBuilder sb = new StringBuilder()
-                .append(enginePath)
-                .append(SLASH)
-                .append(alias);
-
         String secret = null;
+
         try {
-
-            final VaultConfig config = new VaultConfig()
-                    .address(address)
-                    .token(rootToken)
-                    .engineVersion(engineVersion)
-                    .build();
-
-            Vault vault = new Vault(config);
-            Logical logical = vault.logical();
-            if (namespace != null) {
-                logical = logical.withNameSpace(namespace);
-            }
-            secret = logical.read(sb.toString()).getData()
-                    .get(VALUE_PARAMETER);
-
-            if (secret == null) {
-                LOG.error("Cannot read the vault secret from the HashiCorp vault. " +
-                        "Check whether the VAULT_TOKEN is correct and the secret path is available: " + sb.toString());
-            }
-        } catch (VaultException e) {
-            LOG.error("Error while reading the vault secret value for key: " + sb.toString(), e);
+            secret = secretClient.getSecret(alias).getValue();
+        } catch (AzureException exception){
+            LOG.error(exception.getLocalizedMessage());
         }
 
         return secret;
@@ -184,130 +133,6 @@ public class AzureSecretRepository implements SecretRepository {
     public SecretRepository getParent() {
 
         return this.parentRepository;
-    }
-
-    /**
-     * Get the root token of the vault. Either by prompting the user via the console or by accessing the text file
-     * containing the root token.
-     */
-    private void retrieveRootToken() throws AzureVaultException {
-
-        String carbonHome = System.getProperty(CARBON_HOME);
-        setTextFileName();
-
-        if (new File(carbonHome + File.separator + textFilePersist).exists()) {
-            persistToken = true;
-        }
-
-        tokenFile = new File(carbonHome + File.separator + textFileName);
-        if (tokenFile.exists()) {
-            rootToken = readToken(tokenFile);
-
-            if (!persistToken) {
-                if (!renameConfigFile(textFileName_tmp)) {
-                    throw new AzureVaultException("Error in renaming password config file.");
-                }
-            }
-        } else {
-            tokenFile = new File(carbonHome + File.separator + textFileName_tmp);
-            if (tokenFile.exists()) {
-                rootToken = readToken(tokenFile);
-
-                if (!persistToken) {
-                    if (deleteConfigFile()) {
-                        throw new AzureVaultException("Error in deleting password config file.");
-                    }
-                }
-            } else {
-                tokenFile = new File(carbonHome + File.separator + textFilePersist);
-                if (tokenFile.exists()) {
-                    rootToken = readToken(tokenFile);
-
-                    if (!persistToken) {
-                        if (deleteConfigFile()) {
-                            throw new AzureVaultException("Error in deleting password config file.");
-                        }
-                    }
-                } else {
-                    Console console;
-                    char[] token;
-                    if ((console = System.console()) != null && (token = console.readPassword("[%s]",
-                            "Enter the Root Token: ")) != null) {
-                        rootToken = String.valueOf(token);
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * Set the name for the text file which contains the root token.
-     * For Linux: The file name should be hashicorpRootToken-tmp or hashicorpRootToken-persist.
-     * For Windows: The file name should be hashicorpRootToken-tmp.txt or hashicorpRootToken-persist.txt.
-     */
-    private void setTextFileName() {
-
-        String osName = System.getProperty("os.name");
-        if (osName.toLowerCase().contains("win")) {
-            textFileName = "hashicorpRootToken.txt";
-            textFileName_tmp = "hashicorpRootToken-tmp.txt";
-            textFilePersist = "hashicorpRootToken-persist.txt";
-        } else {
-            textFileName = "hashicorpRootToken";
-            textFileName_tmp = "hashicorpRootToken-tmp";
-            textFilePersist = "hashicorpRootToken-persist";
-        }
-    }
-
-    /**
-     * Util method to Read the root token from the text file.
-     *
-     * @param tokenFile File containing the root token.
-     * @return The read token.
-     * @throws AzureVaultException when an error occurred while reading the root token.
-     */
-    private String readToken(File tokenFile) throws AzureVaultException {
-
-        String tokenReadFromFile;
-        try (FileInputStream inputStream = new FileInputStream(tokenFile);
-             BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream))) {
-            tokenReadFromFile = bufferedReader.readLine();
-        } catch (IOException e) {
-            throw new AzureVaultException("Error while reading the root token from " + tokenFile, e);
-        }
-        return tokenReadFromFile;
-    }
-
-    /**
-     * Util method to rename the file containing root token.
-     *
-     * @param fileName Name of the text file.
-     * @return true upon successful renaming.
-     */
-    private boolean renameConfigFile(String fileName) {
-
-        if (tokenFile.exists()) {
-            File newConfigFile = new File(System.getProperty(CARBON_HOME) + File.separator + fileName);
-            return tokenFile.renameTo(newConfigFile);
-        }
-        return false;
-    }
-
-    /**
-     * Util method to delete the temporary text file.
-     *
-     * @return true upon successful deletion.
-     * @throws AzureVaultException when an error occurred while deleting the root token file.
-     */
-    private boolean deleteConfigFile() throws AzureVaultException {
-
-        try (FileOutputStream outputStream = new FileOutputStream(tokenFile);
-             BufferedWriter bufferedWriter = new BufferedWriter(new OutputStreamWriter(outputStream))) {
-            bufferedWriter.write("!@#$%^&*()SDFGHJZXCVBNM!@#$%^&*");
-        } catch (IOException e) {
-            throw new AzureVaultException("Error while deleting the " + tokenFile, e);
-        }
-        return !tokenFile.exists() || !tokenFile.delete();
     }
 
 }
