@@ -1,39 +1,24 @@
-# Intergrate HashiCorp Vault with WSO2 Identity Server
+
+# Integrate Azure Key Vault with WSO2 Identity Server
 
 ## Overview
-This is another version of Hashicorp Vault Connector which is compatible with the External Vault Support.
+This is Azure Key Vault Connector which is compatible with the External Vault Support.
 In order to use this version, it is required to have WSO2 Identity Server 5.12.0 or above. Any version lesser than
-WSO2 Identity Server 5.12.0 would have to use the [version-1](https://github.com/wso2-extensions/carbon-securevault-hashicorp.git)
 
 ## Setting up
 
-### Step 1: Setup HashiCorp Vault
+### Step 1: Setup Azure Vault
 
-1. Start HashiCorp vault server and create a new **kv engine**.
+Steps of creating a Microsoft Azure Key Vault can be found under [https://docs.microsoft.com/en-us/java/api/overview/azure/security-keyvault-secrets-readme?view=azure-java-stable#createget-credentials](https://docs.microsoft.com/en-us/java/api/overview/azure/security-keyvault-secrets-readme?view=azure-java-stable#createget-credentials)
 
-   Enter a Path name when creating the kv engine (Eg: `wso2is`).
-  
-   Following commands can be used to add secrets with the HashiCorp vault.
-   
-   ```
-   # Create a new kv engine
-   vault secrets enable -path=wso2is -version=2 kv
-   
-   # Add new secret
-   vault kv put wso2is/keystore_password value=wso2carbon
-   
-   # Get a secret (To check)
-   vault kv get -field=value wso2is/keystore_password
-   ```
+### Step 2: Configure Azure Vault extension
 
-### Step 2: Configure HashiCorp Vault extension
+1. Build the Azure Vault Integration OSGI bundle using `mvn clean install` and copy
+   the `target/org.wso2.carbon.securevault.azure-1.0.0.jar` file to `<IS_HOME>/repository/components/dropin/`
+   directory.
 
-1. Build the HashiCorp Vault Integration OSGI bundle using `mvn clean install` and copy
-the `target/org.wso2.carbon.securevault.azure-2.0.0.jar` file to `<IS_HOME>/repository/components/dropin/`
-directory.
-
-2. Add **HashiCorp Vault Java Driver** (Eg: `vault-java-driver-5.1.0.jar`) to the
-`<IS_HOME>/repository/components/lib/` directory.
+2. Add **Azure Vault Java Driver** (Eg: `vault-java-driver-5.1.0.jar`) to the
+   `<IS_HOME>/repository/components/lib/` directory.
 
 3. Open `/repository/conf/security/secret-conf.properties` file and set following configurations.
     ```
@@ -42,27 +27,23 @@ directory.
     secretProviders = vault
     secretProviders.vault.provider=org.wso2.securevault.secret.repository.VaultSecretRepositoryProvider
     
-    secretProviders.vault.repositories=hashicorp
-    secretProviders.vault.repositories.hashicorp=org.wso2.carbon.securevault.azure.repository.AzureSecretRepository 
-    
-    secretProviders.vault.repositories.hashicorp.properties.address=https://127.0.0.1:8200
-    secretProviders.vault.repositories.hashicorp.properties.namespace=ns1
-    secretProviders.vault.repositories.hashicorp.properties.enginePath=wso2is
-    secretProviders.vault.repositories.hashicorp.properties.engineVersion=2
+    secretProviders.vault.repositories=azure
+    secretProviders.vault.repositories.azure=org.wso2.carbon.securevault.azure.repository.AzureSecretRepository 
+    secretProviders.vault.repositories.azure.properties.keyVaultUrl=<Vault URL>
     ```
 
-    **Note:** In production, you should always use the vault address with TLS enabled.
+   **Note:** In production, you should always use the vault address with TLS enabled.
 
 4. Add following lines to the `<IS_HOME>/repository/conf/log4j2.properties` file
     ```
-    logger.org-wso2-carbon-securevault-hashicorp.name=org.wso2.carbon.securevault.azure
-    logger.org-wso2-carbon-securevault-hashicorp.level=INFO
-    logger.org-wso2-carbon-securevault-hashicorp.additivity=false
-    logger.org-wso2-carbon-securevault-hashicorp.appenderRef.CARBON_CONSOLE.ref = CARBON_CONSOLE
+    logger.org-wso2-carbon-securevault-azure.name=org.wso2.carbon.securevault.azure
+    logger.org-wso2-carbon-securevault-azure.level=INFO
+    logger.org-wso2-carbon-securevault-azure.additivity=false
+    logger.org-wso2-carbon-securevault-azure.appenderRef.CARBON_CONSOLE.ref = CARBON_CONSOLE
     ```
-   Then append `org-wso2-carbon-securevault-hashicorp` to the `loggers` list in the same file as follows.
+   Then append `org-wso2-carbon-securevault-azure` to the `loggers` list in the same file as follows.
    ```
-   loggers = AUDIT_LOG, trace-messages, ... , org-wso2-carbon-securevault-hashicorp
+   loggers = AUDIT_LOG, trace-messages, ... , org-wso2-carbon-securevault-azure
    ```
 
 ### Step 3: Update passwords with their aliases
@@ -73,7 +54,7 @@ directory.
     [runtime_secrets]
     enable = "true"
     ```
-   
+
 2. Add the encrypted password alias to the relevant sections in the `deployment.toml`
    file by using a place holder: `$secret{alias}`. For example:
 
@@ -92,37 +73,31 @@ directory.
     username = "wso2carbon"
     password = "$secret{database_password}"
     ```
-   NOTE: When there are multiple secret repositories configured (other than Hashicorp vault), Modify the secret
-   placeholder as, 
-   
-   `$secret{vault:hashicorp:<alias>}`. 
+   NOTE: When there are multiple secret repositories configured (other than Azure vault), Modify the secret
+   placeholder as,
+
+   `$secret{vault:azure:<alias>}`.
    Example:
    ```toml
    [super_admin]
    username="admin"
-   password="$secret{vault:hashicorp:admin_password}"
+   password="$secret{vault:azure:admin_password}"
    ```
 
-### Step 4: Start the Server
+### Step 4: Authentication
 
-1. Provide the `VAULT_TOKEN` to the prompted message in the console or create a new file in the `<IS_HOME>` directory. 
-   The file should be named according to your Operating System.
-   
-   ```
-   For Linux   : The file name should be hashicorpRootToken-tmp.
-   For Windows : The file name should be hashicorpRootToken-tmp.txt.
-   ```
-        
-   When you add "tmp" to the file name, note that this will automatically get deleted from the file system after
-   the server starts. Alternatively, if you want to retain the password file after the server starts, the file
-   should be named as follows:
-       
-   ```
-   For Linux   : The file name should be hashicorpRootToken-persist.
-   For Windows : The file name should be hashicorpRootToken-persist.txt.
-   ```
-   
-2. Start the WSO2 Identity Server and enter the keystore password at the startup when prompted.
-   ```
-   [Enter KeyStore and Private Key Password :] wso2carbon
-   ```
+**Method 1**
+Setup environment variables with following authentication parameters
+
+     ``` 
+	    export AZURE_CLIENT_ID=CLIENT ID  
+        export AZURE_CLIENT_SECRET=CLIENT SECRET 
+        export AZURE_TENANT_ID=TENANT ID
+      ```
+
+**Method 2**
+Setup pod identities to authenticate Azure vault into your deployments
+https://docs.microsoft.com/en-us/azure/aks/use-azure-ad-pod-identity
+
+### Step 5 : Start the Server
+Start the Identity Server as usual...
